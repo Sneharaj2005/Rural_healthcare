@@ -39,7 +39,7 @@ async def connect_db() -> None:
     await _client.admin.command("ping")
 
     # ── Indexes ───────────────────────────────────────────────────────────────
-    await _db.users.create_index("email", unique=True)
+    await _db.users.create_index("email", unique=True, sparse=True)
     # phone is optional — do NOT create a unique index on it
     await _db.health_records.create_index("user_id")
     await _db.health_records.create_index([("user_id", 1), ("date", -1)])
