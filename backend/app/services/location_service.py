@@ -9,6 +9,7 @@ Handles:
   - Distance calculation (Haversine formula)
 """
 import math
+import asyncio
 import httpx
 from typing import Optional
 
@@ -24,8 +25,14 @@ logger = get_logger(__name__)
 
 PLACES_BASE   = "https://maps.googleapis.com/maps/api/place"
 GEOCODE_BASE  = "https://maps.googleapis.com/maps/api/geocode/json"
-OVERPASS_URL  = "https://overpass-api.de/api/interpreter"
 NOMINATIM_URL = "https://nominatim.openstreetmap.org"
+
+# Multiple Overpass mirrors — tried in order, first success wins
+OVERPASS_MIRRORS = [
+    "https://overpass-api.de/api/interpreter",
+    "https://overpass.kumi.systems/api/interpreter",
+    "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
+]
 
 # Map app category → Google Places type(s) + keyword
 CATEGORY_MAP = {
@@ -143,33 +150,44 @@ class LocationService:
         return bool(self._key and self._key != "your_google_maps_api_key_here")
 
     # ── OpenStreetMap fallback ────────────────────────────────────────────────
+    async def _query_overpass(self, query: str) -> Optional[dict]:
+        """Try each Overpass mirror in order, return first successful response."""
+        for mirror in OVERPASS_MIRRORS:
+            try:
+                async with httpx.AsyncClient(
+                    timeout=15,
+                    headers={"User-Agent": "RHC-AI-Lite/1.0"}
+                ) as client:
+                    resp = await client.post(mirror, data={"data": query})
+                    resp.raise_for_status()
+                    data = resp.json()
+                    logger.info(f"Overpass success via {mirror}")
+                    return data
+            except Exception as exc:
+                logger.warning(f"Overpass mirror {mirror} failed: {exc}")
+                continue
+        return None
+
     async def _osm_nearby_search(self, req: NearbySearchRequest) -> NearbySearchResponse:
         """Use Overpass API to find nearby healthcare facilities (no API key needed)."""
         amenities = OSM_CATEGORY_MAP.get(req.category, ["hospital"])
-        # Build amenity regex for broader matching
         amenity_regex = "|".join(amenities)
 
-        # Broad query covering amenity tags, healthcare tags, and building=hospital
-        # Uses regex match to catch all variants used in Indian OSM data
+        # Simplified query — fewer sub-queries = faster response
         query = f"""
-[out:json][timeout:25];
+[out:json][timeout:15];
 (
   node["amenity"~"{amenity_regex}"](around:{req.radius},{req.lat},{req.lng});
   way["amenity"~"{amenity_regex}"](around:{req.radius},{req.lat},{req.lng});
-  node["healthcare"](around:{req.radius},{req.lat},{req.lng});
-  way["healthcare"](around:{req.radius},{req.lat},{req.lng});
-  node["building"="hospital"](around:{req.radius},{req.lat},{req.lng});
-  way["building"="hospital"](around:{req.radius},{req.lat},{req.lng});
+  node["healthcare"~"hospital|clinic|doctor|pharmacy"](around:{req.radius},{req.lat},{req.lng});
+  way["healthcare"~"hospital|clinic|doctor|pharmacy"](around:{req.radius},{req.lat},{req.lng});
 );
 out center 40;
 """
-        try:
-            async with httpx.AsyncClient(timeout=25, headers={"User-Agent": "RHC-AI-Lite/1.0"}) as client:
-                resp = await client.post(OVERPASS_URL, data={"data": query})
-                resp.raise_for_status()
-                data = resp.json()
-        except Exception as exc:
-            logger.error("Overpass API search failed", exc_info=exc)
+        data = await self._query_overpass(query)
+
+        if not data:
+            logger.error("All Overpass mirrors failed")
             return NearbySearchResponse(results=[], total=0, lat=req.lat, lng=req.lng, radius=req.radius)
 
         results = []

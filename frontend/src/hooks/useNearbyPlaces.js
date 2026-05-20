@@ -58,7 +58,7 @@ export function useNearbyPlaces() {
         setLocError('Location access denied. Showing Bengaluru.')
         toast.error('Location access denied. Using Bengaluru as default.')
       },
-      { timeout: 8000, maximumAge: 30000 }
+      { timeout: 5000, maximumAge: 60000, enableHighAccuracy: false }
     )
   }, [])
 
