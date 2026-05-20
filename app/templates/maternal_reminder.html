@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Maternal Care Reminder</title>
+    <style>
+        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #fff1f2; margin: 0; padding: 20px; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .header { background: #f43f5e; color: white; padding: 30px 20px; text-align: center; }
+        .header h1 { margin: 0; font-size: 24px; font-weight: 600; }
+        .content { padding: 30px 20px; }
+        .greeting { font-size: 18px; font-weight: bold; margin-bottom: 20px; color: #881337; }
+        .card { background: #fffbfb; border: 1px solid #ffe4e6; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+        .card-title { font-weight: bold; color: #e11d48; margin-bottom: 10px; font-size: 16px; }
+        .visit-item { padding: 10px 0; border-bottom: 1px solid #ffe4e6; }
+        .visit-item:last-child { border-bottom: none; padding-bottom: 0; }
+        .visit-date { font-weight: bold; color: #4b5563; }
+        .water-reminder { background: #f0fdfa; border: 1px solid #ccfbf1; }
+        .water-title { color: #0d9488; }
+        .btn { display: inline-block; background: #f43f5e; color: white; text-decoration: none; padding: 12px 25px; border-radius: 25px; font-weight: bold; margin-top: 10px; }
+        .footer { text-align: center; padding: 20px; color: #9ca3af; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>👶 Maternal Care Update</h1>
+        </div>
+        <div class="content">
+            <div class="greeting">Hello {{ user_name }},</div>
+            <p>Here is your maternal care update for <b>{{ profile_name }}</b> (Week {{ current_week }}).</p>
+            
+            {% if visits %}
+            <div class="card">
+                <div class="card-title">🗓️ Upcoming Doctor Visits</div>
+                {% for v in visits %}
+                <div class="visit-item">
+                    <span class="visit-date">{{ v.visit_date }}</span> — <b>{{ v.visit_type }}</b>
+                    {% if v.hospital %}<br><span style="font-size: 13px; color: #6b7280;">at {{ v.hospital }}</span>{% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% if water_needed %}
+            <div class="card water-reminder">
+                <div class="card-title water-title">💧 Hydration Reminder</div>
+                <p style="margin:0; font-size: 14px;">Staying hydrated is crucial during pregnancy! Don't forget to drink plenty of water today. Aim for at least 10 glasses.</p>
+            </div>
+            {% endif %}
+
+            <div style="text-align: center; margin-top: 30px;">
+                <a href="{{ app_url }}/maternal" class="btn">View Dashboard</a>
+            </div>
+        </div>
+        <div class="footer">
+            &copy; {{ year }} Rural Health Companion AI Lite<br>
+            You are receiving this because you enabled maternal care reminders.
+        </div>
+    </div>
+</body>
+</html>
