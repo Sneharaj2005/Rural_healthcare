@@ -1,110 +1,74 @@
 import { useState } from 'react'
-import { Link, useNavigate, useLocation } from 'react-router-dom'
-import { useMutation } from '@tanstack/react-query'
-import toast from 'react-hot-toast'
-import { FaEnvelope, FaLock } from 'react-icons/fa'
-import api from '../../lib/axios'
-import { useAuthStore } from '../../store/authStore'
+import { Link, useLocation } from 'react-router-dom'
+import { FaEnvelope, FaLock, FaEye, FaEyeSlash } from 'react-icons/fa'
+import { useTranslation } from 'react-i18next'
+import { useAuth } from '../../hooks/useAuth'
+import { useFormValidation, validators } from '../../hooks/useFormValidation'
+import FormField from '../../components/common/FormField'
 import LoadingSpinner from '../../components/common/LoadingSpinner'
 
 export default function LoginPage() {
-  const navigate = useNavigate()
   const location = useLocation()
-  const { setAuth } = useAuthStore()
-  const from = location.state?.from?.pathname || '/dashboard'
+  const { login } = useAuth()
+  const { t } = useTranslation()
+  const [showPassword, setShowPassword] = useState(false)
 
-  const [form, setForm] = useState({ email: '', password: '' })
+  const RULES = {
+    email:    [validators.required(), validators.email()],
+    password: [validators.required(t('auth.password') + ' is required.')],
+  }
 
-  const loginMutation = useMutation({
-    mutationFn: async (credentials) => {
-      // FastAPI OAuth2 expects form data
-      const params = new URLSearchParams()
-      params.append('username', credentials.email)
-      params.append('password', credentials.password)
-      const { data } = await api.post('/auth/login', params, {
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      })
-      return data
-    },
-    onSuccess: (data) => {
-      setAuth(data.user, data.access_token)
-      toast.success(`Welcome back, ${data.user.full_name}!`)
-      navigate(from, { replace: true })
-    },
-    onError: (err) => {
-      toast.error(err.response?.data?.detail || 'Login failed. Please try again.')
-    },
-  })
+  const { values, errors, touched, handleChange, handleBlur, validate } =
+    useFormValidation({ email: '', password: '' }, RULES)
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    loginMutation.mutate(form)
+    if (!validate()) return
+    login.mutate({ ...values, _redirectTo: location.state?.from?.pathname || '/dashboard' })
   }
 
   return (
     <div>
-      <h2 className="mb-1 text-2xl font-bold text-gray-900">Welcome back</h2>
-      <p className="mb-6 text-sm text-gray-500">Sign in to your account</p>
+      <h2 className="mb-1 text-2xl font-bold text-gray-900">{t('auth.welcomeBack')}</h2>
+      <p className="mb-6 text-sm text-gray-500">{t('auth.signInSubtitle')}</p>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label htmlFor="email" className="mb-1.5 block text-sm font-medium text-gray-700">
-            Email address
-          </label>
-          <div className="relative">
-            <FaEnvelope className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <input
-              id="email"
-              type="email"
-              required
-              autoComplete="email"
-              placeholder="you@example.com"
-              className="input-field pl-10"
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
-            />
-          </div>
+      <form onSubmit={handleSubmit} noValidate className="space-y-4">
+        <FormField
+          label={t('auth.email')} id="email" type="email" name="email"
+          autoComplete="email" placeholder="you@example.com" icon={FaEnvelope}
+          value={values.email} onChange={handleChange} onBlur={handleBlur}
+          error={errors.email} touched={touched.email}
+        />
+        <FormField
+          label={t('auth.password')} id="password"
+          type={showPassword ? 'text' : 'password'} name="password"
+          autoComplete="current-password" placeholder="••••••••" icon={FaLock}
+          value={values.password} onChange={handleChange} onBlur={handleBlur}
+          error={errors.password} touched={touched.password}
+          rightElement={
+            <button type="button" onClick={() => setShowPassword(v => !v)}
+              className="text-gray-400 hover:text-gray-600 focus:outline-none"
+              aria-label={showPassword ? 'Hide' : 'Show'}>
+              {showPassword ? <FaEyeSlash className="h-4 w-4" /> : <FaEye className="h-4 w-4" />}
+            </button>
+          }
+        />
+        <div className="flex justify-end">
+          <Link to="/forgot-password" className="text-xs font-medium text-primary-600 hover:text-primary-700">
+            {t('auth.forgotPassword')}
+          </Link>
         </div>
-
-        <div>
-          <label htmlFor="password" className="mb-1.5 block text-sm font-medium text-gray-700">
-            Password
-          </label>
-          <div className="relative">
-            <FaLock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <input
-              id="password"
-              type="password"
-              required
-              autoComplete="current-password"
-              placeholder="••••••••"
-              className="input-field pl-10"
-              value={form.password}
-              onChange={(e) => setForm({ ...form, password: e.target.value })}
-            />
-          </div>
-        </div>
-
-        <button
-          type="submit"
-          disabled={loginMutation.isPending}
-          className="btn-primary w-full py-3"
-        >
-          {loginMutation.isPending ? (
-            <>
-              <LoadingSpinner size="sm" />
-              Signing in…
-            </>
-          ) : (
-            'Sign In'
-          )}
+        <button type="submit" disabled={login.isPending} className="btn-primary w-full py-3 mt-2">
+          {login.isPending
+            ? <><LoadingSpinner size="sm" color="white" /> {t('auth.signingIn')}</>
+            : t('auth.signIn')}
         </button>
       </form>
 
       <p className="mt-6 text-center text-sm text-gray-500">
-        Don't have an account?{' '}
+        {t('auth.noAccount')}{' '}
         <Link to="/register" className="font-medium text-primary-600 hover:text-primary-700">
-          Create one
+          {t('auth.createOne')}
         </Link>
       </p>
     </div>
