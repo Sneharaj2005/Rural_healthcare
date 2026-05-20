@@ -157,6 +157,10 @@ class AIService:
     ) -> ChatResponse:
         emergency = _is_emergency(message)
 
+        # Re-initialise if model is missing (e.g. key was added after startup)
+        if not self._model and settings.GEMINI_API_KEY:
+            self._initialise()
+
         if not self._model:
             return ChatResponse(
                 response=(
