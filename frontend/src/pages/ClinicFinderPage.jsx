@@ -1,7 +1,6 @@
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useRef, Component } from 'react'
 import { MapContainer, TileLayer, Marker, Popup, useMap, Circle } from 'react-leaflet'
 import L from 'leaflet'
-import 'leaflet/dist/leaflet.css'
 import { useTranslation } from 'react-i18next'
 import clsx from 'clsx'
 import toast from 'react-hot-toast'
@@ -45,6 +44,29 @@ const RADIUS_OPTIONS = [
   { value: 10000, label: '10 km' }, { value: 20000, label: '20 km' },
   { value: 50000, label: '50 km' },
 ]
+
+// ── Map error boundary — prevents Leaflet crash from killing the whole page ───
+class MapErrorBoundary extends Component {
+  state = { hasError: false }
+  static getDerivedStateFromError() { return { hasError: true } }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex h-full flex-col items-center justify-center gap-3 bg-gray-50 p-6 text-center">
+          <span className="text-4xl">🗺️</span>
+          <p className="font-semibold text-gray-700">Map failed to load</p>
+          <p className="text-sm text-gray-500">Use the list view to see nearby facilities</p>
+          <button
+            onClick={() => this.setState({ hasError: false })}
+            className="mt-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700">
+            Retry Map
+          </button>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
 
 // ── Clipboard utility ─────────────────────────────────────────────────────────
 async function copyToClipboard(text, successMsg) {
@@ -500,6 +522,7 @@ export default function ClinicFinderPage() {
               <p className="text-sm text-gray-500">Getting your location…</p>
             </div>
           ) : (
+            <MapErrorBoundary>
             <MapContainer center={mapCenterArr} zoom={13}
               style={{ height: '100%', width: '100%' }} zoomControl={true}>
               <TileLayer
@@ -579,6 +602,7 @@ export default function ClinicFinderPage() {
                 )
               })}
             </MapContainer>
+            </MapErrorBoundary>
           )}
 
           {/* Badges */}

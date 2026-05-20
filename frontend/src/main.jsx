@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Toaster } from 'react-hot-toast'
 import App from './App'
 import './index.css'
+import 'leaflet/dist/leaflet.css'  // global import prevents mobile chunk crash
 import './i18n/index.js'   // initialise i18next before render
 
 // ── Clear stale expired auth state on startup ─────────────────────────────────
