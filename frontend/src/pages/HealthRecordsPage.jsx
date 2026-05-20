@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 import { FaPlus, FaFileMedical, FaTrash, FaTimes } from 'react-icons/fa'
 import api from '../lib/axios'
@@ -8,101 +9,61 @@ import LoadingSpinner from '../components/common/LoadingSpinner'
 const RECORD_TYPES = ['Consultation', 'Lab Result', 'Prescription', 'Vaccination', 'Surgery', 'Other']
 
 function RecordModal({ onClose, onSave, saving }) {
+  const { t } = useTranslation()
   const [form, setForm] = useState({
-    title: '',
-    record_type: 'Consultation',
+    title: '', record_type: 'Consultation',
     date: new Date().toISOString().split('T')[0],
-    description: '',
-    doctor_name: '',
-    facility: '',
+    description: '', doctor_name: '', facility: '',
   })
-
-  const handleSubmit = (e) => {
-    e.preventDefault()
-    onSave(form)
-  }
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-gray-900">Add Health Record</h2>
+          <h2 className="text-lg font-bold text-gray-900">{t('records.addTitle')}</h2>
           <button onClick={onClose} className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100">
             <FaTimes className="h-4 w-4" />
           </button>
         </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={e => { e.preventDefault(); onSave(form) }} className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Title *</label>
-              <input
-                required
-                className="input-field"
-                placeholder="e.g. Annual Checkup"
-                value={form.title}
-                onChange={(e) => setForm({ ...form, title: e.target.value })}
-              />
+              <label className="mb-1 block text-sm font-medium text-gray-700">{t('records.recordTitle')} *</label>
+              <input required className="input-field" placeholder="e.g. Annual Checkup"
+                value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Type *</label>
-              <select
-                className="input-field"
-                value={form.record_type}
-                onChange={(e) => setForm({ ...form, record_type: e.target.value })}
-              >
-                {RECORD_TYPES.map((t) => (
-                  <option key={t}>{t}</option>
-                ))}
+              <label className="mb-1 block text-sm font-medium text-gray-700">{t('records.recordType')} *</label>
+              <select className="input-field" value={form.record_type}
+                onChange={e => setForm({ ...form, record_type: e.target.value })}>
+                {RECORD_TYPES.map(t => <option key={t}>{t}</option>)}
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Date *</label>
-              <input
-                type="date"
-                required
-                className="input-field"
-                value={form.date}
-                onChange={(e) => setForm({ ...form, date: e.target.value })}
-              />
+              <label className="mb-1 block text-sm font-medium text-gray-700">{t('records.date')} *</label>
+              <input type="date" required className="input-field" value={form.date}
+                onChange={e => setForm({ ...form, date: e.target.value })} />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Doctor Name</label>
-              <input
-                className="input-field"
-                placeholder="Dr. Smith"
-                value={form.doctor_name}
-                onChange={(e) => setForm({ ...form, doctor_name: e.target.value })}
-              />
+              <label className="mb-1 block text-sm font-medium text-gray-700">{t('records.doctorName')}</label>
+              <input className="input-field" placeholder="Dr. Smith" value={form.doctor_name}
+                onChange={e => setForm({ ...form, doctor_name: e.target.value })} />
             </div>
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Facility</label>
-            <input
-              className="input-field"
-              placeholder="Hospital / Clinic name"
-              value={form.facility}
-              onChange={(e) => setForm({ ...form, facility: e.target.value })}
-            />
+            <label className="mb-1 block text-sm font-medium text-gray-700">{t('records.facility')}</label>
+            <input className="input-field" placeholder="Hospital / Clinic name" value={form.facility}
+              onChange={e => setForm({ ...form, facility: e.target.value })} />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Description</label>
-            <textarea
-              rows={3}
-              className="input-field resize-none"
-              placeholder="Notes, diagnosis, medications…"
-              value={form.description}
-              onChange={(e) => setForm({ ...form, description: e.target.value })}
-            />
+            <label className="mb-1 block text-sm font-medium text-gray-700">{t('records.description')}</label>
+            <textarea rows={3} className="input-field resize-none" placeholder="Notes, diagnosis, medications…"
+              value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
           </div>
-
           <div className="flex justify-end gap-3 pt-2">
-            <button type="button" onClick={onClose} className="btn-secondary">
-              Cancel
-            </button>
+            <button type="button" onClick={onClose} className="btn-secondary">{t('common.cancel')}</button>
             <button type="submit" disabled={saving} className="btn-primary">
               {saving ? <LoadingSpinner size="sm" /> : null}
-              Save Record
+              {t('records.save')}
             </button>
           </div>
         </form>
@@ -123,6 +84,7 @@ const TYPE_COLORS = {
 export default function HealthRecordsPage() {
   const [showModal, setShowModal] = useState(false)
   const queryClient = useQueryClient()
+  const { t } = useTranslation()
 
   const { data, isLoading } = useQuery({
     queryKey: ['health-records'],
@@ -155,28 +117,26 @@ export default function HealthRecordsPage() {
     <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Health Records</h1>
-          <p className="mt-1 text-gray-500">Your personal medical history.</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('records.title')}</h1>
+          <p className="mt-1 text-gray-500">{t('records.subtitle')}</p>
         </div>
         <button onClick={() => setShowModal(true)} className="btn-primary gap-2">
           <FaPlus className="h-3.5 w-3.5" />
-          Add Record
+          {t('records.addRecord')}
         </button>
       </div>
 
       {isLoading ? (
-        <div className="flex justify-center py-20">
-          <LoadingSpinner size="lg" />
-        </div>
+        <div className="flex justify-center py-20"><LoadingSpinner size="lg" /></div>
       ) : data?.records?.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-4 rounded-xl border-2 border-dashed border-gray-200 py-20 text-center">
           <FaFileMedical className="h-12 w-12 text-gray-300" />
           <div>
-            <p className="font-semibold text-gray-700">No records yet</p>
-            <p className="text-sm text-gray-500">Add your first health record to get started.</p>
+            <p className="font-semibold text-gray-700">{t('records.noRecords')}</p>
+            <p className="text-sm text-gray-500">{t('records.noRecordsSubtitle')}</p>
           </div>
           <button onClick={() => setShowModal(true)} className="btn-primary">
-            Add First Record
+            {t('records.addFirst')}
           </button>
         </div>
       ) : (
