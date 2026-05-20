@@ -1,28 +1,53 @@
+"""
+User profile endpoints.
+"""
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from app.core.database import get_db
-from app.core.dependencies import get_current_user
-from app.models.user import UserUpdate
+from app.api.deps import get_db, get_current_user
+from app.schemas.user import UserUpdateRequest, LanguageUpdateRequest
 from app.services.user_service import UserService
+from app.utils.logger import get_logger
 
 router = APIRouter()
+logger = get_logger(__name__)
+
+SAFE = lambda u: {k: v for k, v in u.items() if k != "hashed_password"}  # noqa: E731
 
 
-@router.get("/me")
+@router.get("/me", summary="Get current user profile")
 async def get_me(current_user: dict = Depends(get_current_user)):
-    """Get the currently authenticated user's profile."""
-    return {k: v for k, v in current_user.items() if k != "hashed_password"}
+    return SAFE(current_user)
 
 
-@router.put("/me")
+@router.put("/me", summary="Update current user profile")
 async def update_me(
-    update_data: UserUpdate,
+    payload: UserUpdateRequest,
     current_user: dict = Depends(get_current_user),
     db=Depends(get_db),
 ):
-    """Update the currently authenticated user's profile."""
-    service = UserService(db)
-    updated = await service.update(current_user["id"], update_data)
+    svc = UserService(db)
+    updated = await svc.update(current_user["id"], payload)
     if not updated:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
-    return {k: v for k, v in updated.items() if k != "hashed_password"}
+    return SAFE(updated)
+
+
+@router.put("/me/language", summary="Update preferred language")
+async def update_language(
+    payload: LanguageUpdateRequest,
+    current_user: dict = Depends(get_current_user),
+    db=Depends(get_db),
+):
+    """Store the user's preferred UI language (en | hi | kn | te | ta)."""
+    svc = UserService(db)
+    updated = await svc.update_language(current_user["id"], payload.preferred_language)
+    if not updated:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid language code. Supported: en, hi, kn, te, ta",
+        )
+    logger.info("Language preference saved", extra={
+        "user_id": current_user["id"],
+        "language": payload.preferred_language,
+    })
+    return {"preferred_language": payload.preferred_language, "message": "Language preference saved."}

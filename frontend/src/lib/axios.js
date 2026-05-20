@@ -25,7 +25,10 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    // Don't redirect on 401 from auth endpoints themselves
+    const url = error.config?.url || ''
+    const isAuthEndpoint = url.includes('/auth/login') || url.includes('/auth/register') || url.includes('/auth/verify-token')
+    if (error.response?.status === 401 && !isAuthEndpoint) {
       useAuthStore.getState().logout()
       window.location.href = '/login'
     }

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vaccination Reminder</title>
+  <style>
+    body { margin:0; padding:0; background:#f3f4f6; font-family:Inter,Arial,sans-serif; }
+    .wrapper { max-width:560px; margin:32px auto; background:#fff; border-radius:16px; overflow:hidden; box-shadow:0 4px 24px rgba(0,0,0,.08); }
+    .header  { background:linear-gradient(135deg,#16a34a,#0d9488); padding:32px 32px 24px; text-align:center; }
+    .header h1 { margin:0; color:#fff; font-size:22px; font-weight:700; }
+    .header p  { margin:6px 0 0; color:#bbf7d0; font-size:13px; }
+    .body    { padding:28px 32px; }
+    .greeting { font-size:16px; color:#111827; font-weight:600; margin-bottom:8px; }
+    .intro    { font-size:14px; color:#6b7280; margin-bottom:20px; line-height:1.6; }
+    .vaccine-card { background:#f0fdf4; border:1px solid #bbf7d0; border-radius:12px; padding:16px 20px; margin-bottom:12px; }
+    .vaccine-card .name  { font-size:15px; font-weight:700; color:#15803d; }
+    .vaccine-card .meta  { font-size:12px; color:#6b7280; margin-top:4px; }
+    .vaccine-card .due   { font-size:13px; font-weight:600; color:#dc2626; margin-top:6px; }
+    .overdue-card { background:#fef2f2; border-color:#fecaca; }
+    .overdue-card .name { color:#dc2626; }
+    .overdue-card .due  { color:#b91c1c; }
+    .cta { text-align:center; margin:24px 0 8px; }
+    .cta a { display:inline-block; background:#16a34a; color:#fff; text-decoration:none; padding:12px 28px; border-radius:8px; font-size:14px; font-weight:600; }
+    .disclaimer { font-size:11px; color:#9ca3af; text-align:center; margin-top:20px; line-height:1.5; }
+    .footer { background:#f9fafb; padding:16px 32px; text-align:center; font-size:11px; color:#9ca3af; border-top:1px solid #f3f4f6; }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="header">
+    <h1>💉 Vaccination Reminder</h1>
+    <p>Rural Health Companion AI Lite</p>
+  </div>
+  <div class="body">
+    <p class="greeting">Hello {{ user_name }},</p>
+    <p class="intro">
+      This is a friendly reminder about upcoming or overdue vaccinations for
+      <strong>{{ profile_name }}</strong> ({{ profile_age }}).
+    </p>
+
+    {% for item in vaccines %}
+    <div class="vaccine-card {% if item.status == 'overdue' %}overdue-card{% endif %}">
+      <div class="name">{{ item.vaccine_name }} — Dose {{ item.dose_number }}</div>
+      <div class="meta">Scheduled at: {{ item.due_age_text }}</div>
+      <div class="due">
+        {% if item.status == 'overdue' %}
+          ⚠️ Overdue since {{ item.due_date }} ({{ item.days_until | abs }} days ago)
+        {% else %}
+          📅 Due on {{ item.due_date }}
+          {% if item.days_until == 0 %}(Today!)
+          {% elif item.days_until == 1 %}(Tomorrow)
+          {% else %}(in {{ item.days_until }} days){% endif %}
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+
+    <div class="cta">
+      <a href="{{ app_url }}/vaccination">View Full Schedule →</a>
+    </div>
+
+    <p class="disclaimer">
+      Please visit your nearest PHC, ASHA worker, or government health centre
+      to get these vaccines administered. Vaccination is free under India's
+      Universal Immunisation Programme (UIP).
+    </p>
+  </div>
+  <div class="footer">
+    © {{ year }} Rural Health Companion AI Lite &nbsp;·&nbsp;
+    This is an automated reminder. Do not reply to this email.
+  </div>
+</div>
+</body>
+</html>

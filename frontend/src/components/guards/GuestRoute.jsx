@@ -2,9 +2,9 @@ import { Navigate, Outlet } from 'react-router-dom'
 import { useAuthStore } from '../../store/authStore'
 
 export default function GuestRoute() {
-  const { isAuthenticated } = useAuthStore()
+  const { isAuthenticated, isTokenExpired } = useAuthStore()
 
-  if (isAuthenticated) {
+  if (isAuthenticated && !isTokenExpired()) {
     return <Navigate to="/dashboard" replace />
   }
 
