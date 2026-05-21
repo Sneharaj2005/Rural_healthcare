@@ -130,14 +130,39 @@ class AIService:
             return
         try:
             genai.configure(api_key=settings.GEMINI_API_KEY)
-            # Sanitize model name — remove any whitespace
-            model_name = settings.GEMINI_MODEL.strip()
+
+            # List available models and pick the best one
+            available_models = []
+            try:
+                for m in genai.list_models():
+                    if "generateContent" in m.supported_generation_methods:
+                        available_models.append(m.name)
+                logger.info(f"Available Gemini models: {available_models}")
+            except Exception as e:
+                logger.warning(f"Could not list models: {e}")
+
+            # Pick model in order of preference
+            preferred = [
+                "models/gemini-1.5-flash",
+                "models/gemini-1.5-pro",
+                "models/gemini-pro",
+                "models/gemini-1.0-pro",
+            ]
+            model_name = None
+            for p in preferred:
+                if p in available_models:
+                    model_name = p
+                    break
+            # If none matched, use first available or fall back to configured
             if not model_name:
-                model_name = "gemini-pro"
-            # SDK 0.7.2 requires 'models/' prefix
-            if not model_name.startswith("models/"):
-                model_name = f"models/{model_name}"
-            logger.info(f"Initialising Gemini with model: '{model_name}'")
+                if available_models:
+                    model_name = available_models[0]
+                else:
+                    model_name = settings.GEMINI_MODEL.strip()
+                    if not model_name.startswith("models/"):
+                        model_name = f"models/{model_name}"
+
+            logger.info(f"Using Gemini model: '{model_name}'")
             self._model = genai.GenerativeModel(
                 model_name=model_name,
                 generation_config=genai.GenerationConfig(
@@ -146,7 +171,6 @@ class AIService:
                     max_output_tokens=1024,
                 ),
             )
-            self._model_name = model_name
             logger.info("Gemini AI initialised", extra={"model": model_name})
         except Exception as exc:
             logger.error("Gemini init failed", exc_info=exc)
