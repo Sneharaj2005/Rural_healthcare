@@ -167,11 +167,9 @@ class AIService:
                 suggested_questions=TOPIC_SUGGESTIONS["default"],
             )
 
-        # Build prompt — prepend system prompt if model doesn't support system_instruction
+        # Build prompt — prepend system prompt + language instruction + emergency context
         lang_instruction = LANGUAGE_INSTRUCTIONS.get(language, "")
         parts = []
-        if not getattr(self, '_use_system_instruction', True):
-            parts.append(SYSTEM_PROMPT)
         if lang_instruction:
             parts.append(f"[LANGUAGE INSTRUCTION: {lang_instruction}]")
         if emergency:
@@ -183,16 +181,19 @@ class AIService:
         prompt = "\n\n".join(parts)
 
         try:
-            gemini_history = [
-                {
-                    "role":  "user" if msg.role == "user" else "model",
-                    "parts": [{"text": msg.content}],
-                }
-                for msg in (history or [])
-            ]
-            session  = self._model.start_chat(history=gemini_history)
-            response = await session.send_message_async(prompt)
-            text     = response.text
+            # Build history in correct format
+            gemini_history = []
+            for msg in (history or []):
+                gemini_history.append({
+                    "role": "user" if msg.role == "user" else "model",
+                    "parts": [msg.content],
+                })
+
+            session = self._model.start_chat(history=gemini_history)
+            response = await session.send_message_async(
+                {"role": "user", "parts": [prompt]}
+            )
+            text = response.text
 
             return ChatResponse(
                 response=text,
