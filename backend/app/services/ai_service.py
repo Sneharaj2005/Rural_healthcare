@@ -132,14 +132,12 @@ class AIService:
             genai.configure(api_key=settings.GEMINI_API_KEY)
             self._model = genai.GenerativeModel(
                 model_name=settings.GEMINI_MODEL,
-                system_instruction=SYSTEM_PROMPT,
                 generation_config=genai.GenerationConfig(
                     temperature=0.4,
                     top_p=0.9,
                     max_output_tokens=1024,
                 ),
             )
-            self._use_system_instruction = True
             logger.info("Gemini AI initialised", extra={"model": settings.GEMINI_MODEL})
         except Exception as exc:
             logger.error("Gemini init failed", exc_info=exc)
@@ -167,32 +165,30 @@ class AIService:
                 suggested_questions=TOPIC_SUGGESTIONS["default"],
             )
 
-        # Build prompt — prepend system prompt + language instruction + emergency context
+        # Build full prompt with system context + history + user message
         lang_instruction = LANGUAGE_INSTRUCTIONS.get(language, "")
-        parts = []
+
+        # Build conversation as a single prompt string (most compatible approach)
+        full_prompt = SYSTEM_PROMPT + "\n\n"
+
         if lang_instruction:
-            parts.append(f"[LANGUAGE INSTRUCTION: {lang_instruction}]")
+            full_prompt += f"{lang_instruction}\n\n"
+
         if emergency:
-            parts.append(
-                "[EMERGENCY CONTEXT: The user may be describing a medical emergency. "
-                "Immediately advise calling 112 or 108.]"
+            full_prompt += (
+                "EMERGENCY CONTEXT: The user may be describing a medical emergency. "
+                "Immediately advise calling 112 or 108.\n\n"
             )
-        parts.append(message)
-        prompt = "\n\n".join(parts)
+
+        # Add recent history
+        for msg in (history or [])[-6:]:  # last 6 messages for context
+            role = "User" if msg.role == "user" else "Assistant"
+            full_prompt += f"{role}: {msg.content}\n\n"
+
+        full_prompt += f"User: {message}\n\nAssistant:"
 
         try:
-            # Build history in correct format
-            gemini_history = []
-            for msg in (history or []):
-                gemini_history.append({
-                    "role": "user" if msg.role == "user" else "model",
-                    "parts": [msg.content],
-                })
-
-            session = self._model.start_chat(history=gemini_history)
-            response = await session.send_message_async(
-                {"role": "user", "parts": [prompt]}
-            )
+            response = await self._model.generate_content_async(full_prompt)
             text = response.text
 
             return ChatResponse(
