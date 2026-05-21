@@ -133,7 +133,7 @@ class AIService:
             # Sanitize model name — remove any whitespace
             model_name = settings.GEMINI_MODEL.strip()
             if not model_name:
-                model_name = "gemini-1.5-flash"
+                model_name = "gemini-pro"
             # SDK 0.7.2 requires 'models/' prefix
             if not model_name.startswith("models/"):
                 model_name = f"models/{model_name}"
