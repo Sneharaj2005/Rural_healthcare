@@ -130,21 +130,37 @@ class AIService:
             return
         try:
             genai.configure(api_key=settings.GEMINI_API_KEY)
-            self._model = genai.GenerativeModel(
-                model_name=settings.GEMINI_MODEL,
-                system_instruction=SYSTEM_PROMPT,
-                generation_config=genai.GenerationConfig(
-                    temperature=0.4,          # factual, not creative
-                    top_p=0.9,
-                    max_output_tokens=1024,
-                ),
-                safety_settings=[
-                    {"category": "HARM_CATEGORY_HARASSMENT",        "threshold": "BLOCK_MEDIUM_AND_ABOVE"},
-                    {"category": "HARM_CATEGORY_HATE_SPEECH",       "threshold": "BLOCK_MEDIUM_AND_ABOVE"},
-                    {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_MEDIUM_AND_ABOVE"},
-                    {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_ONLY_HIGH"},
-                ],
-            )
+            # system_instruction is supported in gemini-1.5-* and gemini-2.*
+            # For older models, we prepend the system prompt to each message instead
+            try:
+                self._model = genai.GenerativeModel(
+                    model_name=settings.GEMINI_MODEL,
+                    system_instruction=SYSTEM_PROMPT,
+                    generation_config=genai.GenerationConfig(
+                        temperature=0.4,
+                        top_p=0.9,
+                        max_output_tokens=1024,
+                    ),
+                    safety_settings=[
+                        {"category": "HARM_CATEGORY_HARASSMENT",        "threshold": "BLOCK_MEDIUM_AND_ABOVE"},
+                        {"category": "HARM_CATEGORY_HATE_SPEECH",       "threshold": "BLOCK_MEDIUM_AND_ABOVE"},
+                        {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_MEDIUM_AND_ABOVE"},
+                        {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_ONLY_HIGH"},
+                    ],
+                )
+                self._use_system_instruction = True
+            except Exception:
+                # Fallback: model doesn't support system_instruction — prepend to prompt
+                self._model = genai.GenerativeModel(
+                    model_name=settings.GEMINI_MODEL,
+                    generation_config=genai.GenerationConfig(
+                        temperature=0.4,
+                        top_p=0.9,
+                        max_output_tokens=1024,
+                    ),
+                )
+                self._use_system_instruction = False
+                logger.warning("system_instruction not supported — using prompt prepend fallback")
             logger.info("Gemini AI initialised", extra={"model": settings.GEMINI_MODEL})
         except Exception as exc:
             logger.error("Gemini init failed", exc_info=exc)
@@ -172,9 +188,11 @@ class AIService:
                 suggested_questions=TOPIC_SUGGESTIONS["default"],
             )
 
-        # Build prompt — prepend language instruction + emergency context if needed
+        # Build prompt — prepend system prompt if model doesn't support system_instruction
         lang_instruction = LANGUAGE_INSTRUCTIONS.get(language, "")
         parts = []
+        if not getattr(self, '_use_system_instruction', True):
+            parts.append(SYSTEM_PROMPT)
         if lang_instruction:
             parts.append(f"[LANGUAGE INSTRUCTION: {lang_instruction}]")
         if emergency:
