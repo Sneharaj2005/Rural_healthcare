@@ -216,24 +216,31 @@ class AIService:
             )
         except Exception as exc:
             err_str = str(exc)
-            logger.error("Gemini chat error", exc_info=exc)
+            err_type = type(exc).__name__
+            logger.error(f"Gemini chat error [{err_type}]: {err_str}", exc_info=exc)
             # Give a specific message for quota exhaustion
-            if "429" in err_str or "quota" in err_str.lower() or "ResourceExhausted" in type(exc).__name__:
+            if "429" in err_str or "quota" in err_str.lower() or "ResourceExhausted" in err_type:
                 msg = (
                     "⚠️ **AI service is temporarily unavailable** — the API quota has been reached.\n\n"
                     "Please try again in a few minutes, or check your Gemini API plan at "
                     "[ai.google.dev](https://ai.google.dev).\n\n"
                     "> ⚕️ *This information is for general guidance only.*"
                 )
-            elif "404" in err_str or "NotFound" in type(exc).__name__:
+            elif "404" in err_str or "NotFound" in err_type or "not found" in err_str.lower():
                 msg = (
-                    "⚠️ **AI model not available.** The configured model is not accessible.\n\n"
-                    "Please contact the administrator to update the `GEMINI_MODEL` setting.\n\n"
+                    f"⚠️ **AI model `{settings.GEMINI_MODEL}` is not available.**\n\n"
+                    "Please update the `GEMINI_MODEL` environment variable in Render to `gemini-1.5-flash`.\n\n"
+                    "> ⚕️ *This information is for general guidance only.*"
+                )
+            elif "403" in err_str or "permission" in err_str.lower() or "API_KEY" in err_str:
+                msg = (
+                    "⚠️ **Invalid API key.** The Gemini API key is missing or incorrect.\n\n"
+                    "Please update `GEMINI_API_KEY` in Render environment variables.\n\n"
                     "> ⚕️ *This information is for general guidance only.*"
                 )
             else:
                 msg = (
-                    "Sorry, I encountered an error processing your request. "
+                    f"Sorry, I encountered an error: `{err_type}`.\n\n"
                     "Please try again in a moment.\n\n"
                     "> ⚕️ *This information is for general guidance only.*"
                 )
