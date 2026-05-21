@@ -130,15 +130,21 @@ class AIService:
             return
         try:
             genai.configure(api_key=settings.GEMINI_API_KEY)
+            # Sanitize model name — remove any whitespace or 'models/' prefix
+            model_name = settings.GEMINI_MODEL.strip().replace("models/", "")
+            if not model_name:
+                model_name = "gemini-1.5-flash"
+            logger.info(f"Initialising Gemini with model: '{model_name}'")
             self._model = genai.GenerativeModel(
-                model_name=settings.GEMINI_MODEL,
+                model_name=model_name,
                 generation_config=genai.GenerationConfig(
                     temperature=0.4,
                     top_p=0.9,
                     max_output_tokens=1024,
                 ),
             )
-            logger.info("Gemini AI initialised", extra={"model": settings.GEMINI_MODEL})
+            self._model_name = model_name
+            logger.info("Gemini AI initialised", extra={"model": model_name})
         except Exception as exc:
             logger.error("Gemini init failed", exc_info=exc)
 
